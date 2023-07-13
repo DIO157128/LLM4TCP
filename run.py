@@ -199,14 +199,15 @@ def main():
                 vectors = pd.read_csv(project_version_output_path)
                 print('   Calculating ' + args.sim_name + '..')
                 calculate_similarity_optimized(vectors, args, project_version, output_path)
-
+                execution_time = end_time - start_time
+                print(f"相似度计算时间为: {execution_time} 秒")
             dist_matrix = np.genfromtxt(output_path + '_similarity/' + args.sim_name + '/' + project_version + '.csv',
                                         delimiter=',')
             s = ART(dist_matrix)
             apfd = get_apfd(s, mutant_matrix)
             end_time = time.time()
             execution_time = end_time - start_time
-            print(f"程序运行时间为: {execution_time} 秒")
+            print(f"排序时间为: {execution_time} 秒")
             res_versions.append(project_version)
             res_s.append(s)
             res_apfd.append(apfd)

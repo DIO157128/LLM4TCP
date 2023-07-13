@@ -54,10 +54,29 @@ def getS(fin, algoname):
         selsize = all_
         stime, ptime, prioritization = fast.fast_(
             fin, selsize, r=r, b=b, bbox=True, k=k, memory=False)
+    elif algoname == "FAST-sqrt":
+        def sqrt_(x): return int(math.sqrt(x)) + 1
+        selsize = sqrt_
+        stime, ptime, prioritization = fast.fast_(
+            fin, selsize, r=r, b=b, bbox=True, k=k, memory=False)
+    elif algoname == "FAST-log":
+        def log_(x): return int(math.log(x, 2)) + 1
+        selsize = log_
+        stime, ptime, prioritization = fast.fast_(
+            fin, selsize, r=r, b=b, bbox=True, k=k, memory=False)
+    elif algoname == "FAST-one":
+        def one_(x): return 1
+        selsize = one_
+        stime, ptime, prioritization = fast.fast_(
+            fin, selsize, r=r, b=b, bbox=True, k=k, memory=False)
     elif algoname == "STR":
         stime, ptime, prioritization = competitors.str_(fin)
     elif algoname == "I-TSD":
         stime, ptime, prioritization = competitors.i_tsd(fin)
+    else:
+        def pw(x): pass
+        stime, ptime, prioritization = fast.fast_pw(
+            fin, r=r, b=b, bbox=True, k=k, memory=False)
     return [i - 1 for i in prioritization]
 
 
@@ -85,7 +104,7 @@ def main():
     versions = sorted(versions, key=lambda x: int(x[:-4]))
     project_versions = [project + version.replace('.txt', '') for version in versions]
     for i in range(args.repeat):
-        print("Project:{} length:{}".format(args.project_name, len(project_versions)))
+        print("Project:{} length:{} repeat{}".format(args.project_name, len(project_versions),i))
 
         df_apfd = pd.DataFrame()
         res_versions = []

@@ -121,8 +121,8 @@ def fast_pw(input_file, r, b, bbox=False, k=5, memory=False):
 
     else:
         # loading input file and generating minhashes signatures
-        sigfile = input_file.replace(".txt", ".sig")
-        sigtimefile = "{}_sigtime.txt".format(input_file.split(".")[0])
+        sigfile = input_file.replace(".txt", ".sig").replace("TestMethods_txt","fastpw")
+        sigtimefile = "{}_sigtime.txt".format(input_file.replace(".txt","").replace("TestMethods_txt","fastpw"))
         if not os.path.exists(sigfile):
             mh_t = time.clock()
             storeSignatures(input_file, sigfile, hashes, bbox, k)
@@ -221,7 +221,7 @@ def fast_(input_file, selsize, r, b, bbox=False, k=5, memory=False):
     n = r * b  # number of hash functions
 
     hashes = [lsh.hashFamily(i) for i in xrange(n)]
-
+    algoname = selsize.__name__[:-1]
     if memory:
         test_suite = loadTestSuite(input_file, bbox=bbox, k=k)
         # generate minhashes signatures
@@ -233,8 +233,8 @@ def fast_(input_file, selsize, r, b, bbox=False, k=5, memory=False):
 
     else:
         # loading input file and generating minhashes signatures
-        sigfile = input_file.replace(".txt", ".sig").replace("TestMethods_txt","fastall")
-        sigtimefile = "{}_sigtime.txt".format(input_file.replace(".txt","").replace("TestMethods_txt","fastall"))
+        sigfile = input_file.replace(".txt", ".sig").replace("TestMethods_txt","fast{}".format(algoname))
+        sigtimefile = "{}_sigtime.txt".format(input_file.replace(".txt","").replace("TestMethods_txt","fast{}".format(algoname)))
         if not os.path.exists(sigfile):
             mh_t = time.clock()
             storeSignatures(input_file, sigfile, hashes, bbox, k)
