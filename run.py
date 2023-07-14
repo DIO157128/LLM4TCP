@@ -3,6 +3,7 @@ import sys
 import os
 import csv
 import time
+import random
 
 import pandas as pd
 from collections import defaultdict
@@ -54,24 +55,27 @@ def generate_vectors(input_path, output_path, output_folder ,model, device):
     vectors.to_csv(output_path, index=False)
 
     return vectors
+
 def parseVec(vec):
     res = []
     for v in vec:
         v = v.replace('[',"")
         v = v.replace(']', "")
         tem_v = v.split(',')
-        tem_v = [float(x) for x in tem_v]
+        tem_v = np.array([float(x) for x in tem_v])
         res.append(tem_v)
-    return res
-def ART(distance_matrix):
+    return np.array(res)
+def ART(distance_matrix,args):
     """
     ART排序算法
     """
     num = len(distance_matrix)
     select = []
     suite = [i for i in range(num)]
-    #first = random.randint(0, len(distance_matrix) - 1)
-    first = 0
+    if args.random_first:
+        first = random.randint(0, len(distance_matrix) - 1)
+    else:
+        first = 0
     select.append(first)
     suite.remove(first)
     while len(suite) != 0:
@@ -83,7 +87,10 @@ def ART(distance_matrix):
                     temp = distance_matrix[r1][r2]
                     candidate[r1] = temp
         sort = sorted(candidate.items(), key=lambda x: x[1], reverse=True)
-        select_case = int(sort[0][0])
+        if args.random_select:
+            select_case = random.choice([x[0] for x in sort if x[1] == sort[0][1]])
+        else:
+            select_case = int(sort[0][0])
         select.append(select_case)
         suite.remove(select_case)
     return select
@@ -154,7 +161,7 @@ def main():
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--generate_vector", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
-    parser.add_argument("--calculate_similarity", action='store_true', default=True,
+    parser.add_argument("--calculate_similarity", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
     parser.add_argument("--calculate_apfd", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
@@ -163,6 +170,10 @@ def main():
     parser.add_argument("--sim_name", default="cosine", type=str, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--repeat", default=50, type=int, required=False,
+                        help="The output directory where the model predictions and checkpoints will be written.")
+    parser.add_argument("--random_first", default=1, type=int, required=False,
+                        help="The output directory where the model predictions and checkpoints will be written.")
+    parser.add_argument("--random_select", default=1, type=int, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
     args = parser.parse_args()
     print("language model:", args.model_name)
@@ -177,14 +188,13 @@ def main():
     versions = os.listdir(args.input_path + '/' + project)
     versions = sorted(versions, key=lambda x: int(x[:-4]))
     project_versions = [project + version.replace('.csv', '') for version in versions]
-
-    print("Project:{} length:{}".format(args.project_name, len(project_versions)))
-
-    df_apfd = pd.DataFrame()
-    res_versions = []
-    res_s = []
-    res_apfd = []
     for i in range(args.repeat):
+        print("Project:{} length:{} repeat{}".format(args.project_name, len(project_versions),i))
+
+        df_apfd = pd.DataFrame()
+        res_versions = []
+        res_s = []
+        res_apfd = []
         for project_version in project_versions:
             print(project_version)
             project_version_input_path = args.input_path + '/' + project_version + '.csv'
@@ -199,11 +209,12 @@ def main():
                 vectors = pd.read_csv(project_version_output_path)
                 print('   Calculating ' + args.sim_name + '..')
                 calculate_similarity_optimized(vectors, args, project_version, output_path)
+                end_time = time.time()
                 execution_time = end_time - start_time
                 print(f"相似度计算时间为: {execution_time} 秒")
             dist_matrix = np.genfromtxt(output_path + '_similarity/' + args.sim_name + '/' + project_version + '.csv',
                                         delimiter=',')
-            s = ART(dist_matrix)
+            s = ART(dist_matrix,args)
             apfd = get_apfd(s, mutant_matrix)
             end_time = time.time()
             execution_time = end_time - start_time

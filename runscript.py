@@ -10,8 +10,8 @@ if __name__ == '__main__':
     commands = []
     sim_name = 'cosine'
     model_name = 'codebert'
-    for dir_name in os.listdir('./data/TestMethods_txt'):
-        commands.append('python run.py --project_name {} --model_name {} --calculate_apfd --save_sim_matrix --calculate_similarity --sim_name {} --repeat 50'.format(model_name,sim_name,dir_name))
+    for dir_name in os.listdir('./data/TestMethods'):
+        commands.append('python run.py --project_name {} --model_name {} --calculate_apfd --save_sim_matrix --calculate_similarity --sim_name {} --repeat 50'.format(dir_name,model_name,sim_name))
 
     max_concurrent_processes = 7
 
