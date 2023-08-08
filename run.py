@@ -65,34 +65,35 @@ def parseVec(vec):
         tem_v = np.array([float(x) for x in tem_v])
         res.append(tem_v)
     return np.array(res)
-def ART(distance_matrix,args):
+def ART(distance_matrix, args):
     """
-    ART排序算法
+    优化后的ART排序算法
     """
     num = len(distance_matrix)
     select = []
-    suite = [i for i in range(num)]
+    suite = np.arange(num)
+
     if args.random_first:
-        first = random.randint(0, len(distance_matrix) - 1)
+        first = np.random.randint(0, num)
     else:
         first = 0
+
     select.append(first)
-    suite.remove(first)
+    suite = np.delete(suite, first)
+
     while len(suite) != 0:
-        candidate = defaultdict(int)
-        for r1 in suite:
-            temp = sys.maxsize
-            for r2 in select:
-                if distance_matrix[r1][r2] < temp:
-                    temp = distance_matrix[r1][r2]
-                    candidate[r1] = temp
-        sort = sorted(candidate.items(), key=lambda x: x[1], reverse=True)
+        r2_values = distance_matrix[select]  # 从距离矩阵中选择已选项目
+        candidate = np.min(distance_matrix[suite][:, select], axis=1)  # 计算剩余项目的最小距离
+        candidate_idx = suite[np.argwhere(candidate == candidate.max())].flatten()
+
         if args.random_select:
-            select_case = random.choice([x[0] for x in sort if x[1] == sort[0][1]])
+            select_case = np.random.choice(candidate_idx)
         else:
-            select_case = int(sort[0][0])
+            select_case = candidate_idx[0]
+
         select.append(select_case)
-        suite.remove(select_case)
+        suite = np.delete(suite, np.where(suite == select_case))
+
     return select
 
 def calculate_similarity_optimized(vectors, args, proj_ver, output_path):
@@ -163,7 +164,7 @@ def main():
                         help="Run evaluation during training at each logging step.")
     parser.add_argument("--calculate_similarity", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
-    parser.add_argument("--calculate_apfd", action='store_true', default=False,
+    parser.add_argument("--calculate_apfd", action='store_true', default=True,
                         help="Run evaluation during training at each logging step.")
     parser.add_argument("--save_sim_matrix", action='store_true', default=True,
                         help="Run evaluation during training at each logging step.")
@@ -174,6 +175,8 @@ def main():
     parser.add_argument("--random_first", default=1, type=int, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--random_select", default=1, type=int, required=False,
+                        help="The output directory where the model predictions and checkpoints will be written.")
+    parser.add_argument("--start", default=0, type=int, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
     args = parser.parse_args()
     print("language model:", args.model_name)
@@ -188,7 +191,7 @@ def main():
     versions = os.listdir(args.input_path + '/' + project)
     versions = sorted(versions, key=lambda x: int(x[:-4]))
     project_versions = [project + version.replace('.csv', '') for version in versions]
-    for i in range(args.repeat):
+    for i in range(args.start,args.repeat):
         print("Project:{} length:{} repeat{}".format(args.project_name, len(project_versions),i))
 
         df_apfd = pd.DataFrame()
