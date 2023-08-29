@@ -164,9 +164,11 @@ def main():
                         help="Run evaluation during training at each logging step.")
     parser.add_argument("--calculate_similarity", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
-    parser.add_argument("--calculate_apfd", action='store_true', default=True,
+    parser.add_argument("--calculate_apfd", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
-    parser.add_argument("--save_sim_matrix", action='store_true', default=True,
+    parser.add_argument("--sorting", action='store_true', default=False,
+                        help="Run evaluation during training at each logging step.")
+    parser.add_argument("--save_sim_matrix", action='store_true', default=False,
                         help="Run evaluation during training at each logging step.")
     parser.add_argument("--sim_name", default="cosine", type=str, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
@@ -178,6 +180,8 @@ def main():
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--start", default=0, type=int, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
+    parser.add_argument("--single_version", default=False, action='store_true',
+                        help="Whether to write raw predictions on test data.")
     args = parser.parse_args()
     print("language model:", args.model_name)
     print('Load the model..')
@@ -192,12 +196,18 @@ def main():
     versions = sorted(versions, key=lambda x: int(x[:-4]))
     project_versions = [project + version.replace('.csv', '') for version in versions]
     for i in range(args.start,args.repeat):
+        apfd_time = []
+        art_time = []
+        sim_time = []
+        vec_time = []
         print("Project:{} length:{} repeat{}".format(args.project_name, len(project_versions),i))
 
         df_apfd = pd.DataFrame()
         res_versions = []
         res_s = []
         res_apfd = []
+        if args.single_version:
+            project_versions = project_versions[:1]
         for project_version in project_versions:
             print(project_version)
             project_version_input_path = args.input_path + '/' + project_version + '.csv'
@@ -207,24 +217,59 @@ def main():
             if args.generate_vector:
                 generate_vectors(project_version_input_path, project_version_output_path, project_version_output_folder,
                                  model, device)
+                end_time = time.time()
+                execution_time = end_time - start_time
+                vec_time.append(execution_time)
             mutant_matrix = read_mutant_matrix(project_version_input_path)
             if args.calculate_similarity:
                 vectors = pd.read_csv(project_version_output_path)
                 print('   Calculating ' + args.sim_name + '..')
+                start_time = time.time()
                 calculate_similarity_optimized(vectors, args, project_version, output_path)
                 end_time = time.time()
                 execution_time = end_time - start_time
+                sim_time.append(execution_time)
                 print(f"相似度计算时间为: {execution_time} 秒")
-            dist_matrix = np.genfromtxt(output_path + '_similarity/' + args.sim_name + '/' + project_version + '.csv',
-                                        delimiter=',')
-            s = ART(dist_matrix,args)
-            apfd = get_apfd(s, mutant_matrix)
-            end_time = time.time()
-            execution_time = end_time - start_time
-            print(f"排序时间为: {execution_time} 秒")
-            res_versions.append(project_version)
-            res_s.append(s)
-            res_apfd.append(apfd)
+            if args.sorting:
+                dist_matrix = np.genfromtxt(output_path + '_similarity/' + args.sim_name + '/' + project_version + '.csv',
+                                            delimiter=',')
+                start_time = time.time()
+                s = ART(dist_matrix,args)
+                end_time = time.time()
+                execution_time = end_time - start_time
+                art_time.append(execution_time)
+                start_time = time.time()
+                apfd = get_apfd(s, mutant_matrix)
+                end_time = time.time()
+                execution_time = end_time - start_time
+                apfd_time.append(execution_time)
+                print(f"排序时间为: {execution_time} 秒")
+                res_versions.append(project_version)
+                res_s.append(s)
+                res_apfd.append(apfd)
+        if args.generate_vector:
+            vector_folder_path = args.output_path + args.model_name + "_time/vector"
+            if not os.path.exists(vector_folder_path):
+                os.makedirs(vector_folder_path)
+            df_time = pd.DataFrame()
+            df_time['Vector Time'] = vec_time
+            df_time.to_csv(vector_folder_path + "/" + args.project_name + ".csv", index=False)
+        if args.calculate_similarity:
+            sim_folder_path = args.output_path + args.model_name + "_time/similarity"
+            if not os.path.exists(sim_folder_path):
+                os.makedirs(sim_folder_path)
+            df_time = pd.DataFrame()
+            df_time['Similarity Time'] = sim_time
+            df_time.to_csv( sim_folder_path+ "/" + args.project_name +'_'+args.sim_name+ ".csv", index=False)
+        if args.sorting:
+            art_folder_path = args.output_path + args.model_name + "_time/art/" + args.project_name
+            if not os.path.exists(art_folder_path):
+                os.makedirs(art_folder_path)
+            df_time = pd.DataFrame()
+            df_time['Project Version'] = res_versions
+            df_time['ART Time'] = art_time
+            df_time['APFD Time'] = apfd_time
+            df_time.to_csv(art_folder_path+"/{}_".format(i)+args.sim_name+".csv",index=False)
         if args.calculate_apfd:
             df_apfd['Project Version'] = res_versions
             df_apfd['Sort'] = res_s
@@ -233,7 +278,10 @@ def main():
             if not os.path.exists(apfd_folder_path):
                 os.makedirs(apfd_folder_path)
             df_apfd.to_csv(apfd_folder_path+"/{}_".format(i)+args.sim_name+".csv",index=False)
+
+
         args.calculate_similarity = False
+        args.generate_vector = False
 
 
 

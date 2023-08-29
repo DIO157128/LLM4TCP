@@ -94,6 +94,8 @@ def main():
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--repeat", default=50, type=int, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
+    parser.add_argument("--single_version", default=False, action='store_true',
+                        help="Whether to write raw predictions on test data.")
     args = parser.parse_args()
     # FAST parameters
 
@@ -104,12 +106,17 @@ def main():
     versions = sorted(versions, key=lambda x: int(x[:-4]))
     project_versions = [project + version.replace('.txt', '') for version in versions]
     for i in range(args.repeat):
+        apfd_time = []
+        art_time = []
+        sim_time = []
         print("Project:{} length:{} repeat{}".format(args.project_name, len(project_versions),i))
 
         df_apfd = pd.DataFrame()
         res_versions = []
         res_s = []
         res_apfd = []
+        if args.single_version:
+            project_versions = project_versions[:1]
         for project_version in project_versions:
             print(project_version)
             fin_path = args.input_path + '/' + project_version + '.txt'
@@ -118,13 +125,26 @@ def main():
             start_time = time.time()
             print('   Calculating ' + algoname + '..')
             s = getS(fin_path, algoname)
+            end_time = time.time()
+            execution_time = end_time - start_time
+            art_time.append(execution_time)
+            
+            start_time = time.time()
             apfd = get_apfd(s, mutant_matrix)
             end_time = time.time()
             execution_time = end_time - start_time
-            print(execution_time)
+            apfd_time.append(execution_time)
             res_versions.append(project_version)
             res_s.append(s)
             res_apfd.append(apfd)
+        art_folder_path = args.output_path + args.algo_name + "_time/art/" + args.project_name
+        if not os.path.exists(art_folder_path):
+            os.makedirs(art_folder_path)
+        df_time = pd.DataFrame()
+        df_time['Project Version'] = res_versions
+        df_time['ART Time'] = art_time
+        df_time['APFD Time'] = apfd_time
+        df_time.to_csv(art_folder_path+"/" + algoname + "_{}".format(i) + ".csv",index=False)
         df_apfd['Project Version'] = res_versions
         df_apfd['Sort'] = res_s
         df_apfd['APFD'] = res_apfd
